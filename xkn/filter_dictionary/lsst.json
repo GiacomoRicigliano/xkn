@@ -1,0 +1,56 @@
+{
+    "369": {
+        "active": 1,
+        "filename": [
+            "None"
+        ],
+        "lambda": 3.694e-07,
+        "name": "u_LSST",
+        "plot": 1
+    },
+    "484": {
+        "active": 1,
+        "filename": [
+            "None"
+        ],
+        "lambda": 4.841e-07,
+        "name": "g_LSST",
+        "plot": 1
+    },
+    "626": {
+        "active": 1,
+        "filename": [
+            "None"
+        ],
+        "lambda": 6.258e-07,
+        "name": "r_LSST",
+        "plot": 1
+    },
+    "756": {
+        "active": 1,
+        "filename": [
+            "None"
+        ],
+        "lambda": 7.5605e-07,
+        "name": "i_LSST",
+        "plot": 1
+    },
+    "870": {
+        "active": 1,
+        "filename": [
+            "None"
+        ],
+        "lambda": 8.701e-07,
+        "name": "z_LSST",
+        "plot": 1
+    },
+    "975": {
+        "active": 1,
+        "filename": [
+            "None"
+        ],
+        "lambda": 9.749e-07,
+        "name": "y_LSST",
+        "plot": 1
+    }
+}
