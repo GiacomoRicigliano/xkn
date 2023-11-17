@@ -22,7 +22,7 @@ The development is in progress, here the predicted timeline:
 - End of 2023:          Extensive documentation
 - First months of 2024: First beta release
 
-Please, check <url> regularly for updates.
+Please, check the repo https://github.com/GiacomoRicigliano/xkn regularly for updates.
 
 ###############################################
 
