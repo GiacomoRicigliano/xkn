@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 ##############################################################################################
@@ -9,6 +11,9 @@ class MKNConfig:
     def __init__(self, config_path):
         from configparser import ConfigParser
         from copy import deepcopy
+
+        # check if the config file exists
+        if not os.path.isfile(config_path): raise FileNotFoundError(f'Config file {config_path} not found!')
 
         self.path               = config_path
         self.config             = ConfigParser()

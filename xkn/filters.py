@@ -31,6 +31,10 @@ def read_filter_properties(filter_dict='telescopes', filter_dict_path=None):
     return {lam : dic_filt[str(lam)] for lam in lams}, lams, {}
 
 def read_filter_measures(filter_data_path, t_min, t_max, filter_dict='telescopes', filter_dict_path=None, dered_correction=True, R_V=3.1, EBV=0.105, A_V=None, upper_limits=True):
+    # check if filter_data_path exists
+    if not os.path.exists(filter_data_path): raise FileNotFoundError(f"The path to the filter data {filter_data_path} does not exist!")
+
+    # load the filter information
     dic_filt, lams, _ = read_filter_properties(filter_dict=filter_dict, filter_dict_path=filter_dict_path)
 
     # load the measured magnitudes

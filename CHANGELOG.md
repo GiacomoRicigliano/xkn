@@ -5,3 +5,4 @@
 ### Added/Changed
 
 * changed deprecated `np.float` to `float` in **shell.py**
+* added missing or incorrect file paths handling in **config.py** and **filtes.py**
