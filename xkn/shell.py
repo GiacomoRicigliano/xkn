@@ -58,8 +58,8 @@ class Shell(object):
             or  ('max_op'     in shell_vars and shell_vars['max_op']     is not None)): self.opacity = self.op_dist(angles, **shell_vars)
             else:                                                                       self.opacity = self.kappa_2_ye('ye', self.ye)
         else:
-            if shell_vars['m_ej'] is not None:      m_tot = np.float(shell_vars['m_ej'])
-            elif shell_vars['xi_disk'] is not None: m_tot = np.float(shell_vars['xi_disk']) * np.float(glob_vars['m_disk'])
+            if shell_vars['m_ej'] is not None:      m_tot = float(shell_vars['m_ej'])
+            elif shell_vars['xi_disk'] is not None: m_tot = float(shell_vars['xi_disk']) * float(glob_vars['m_disk'])
             else: raise NameError(f'Please specify either m_ej or xi_disk for shell: {self.name}')
             self.mass_ej = self.mass_dist(angles, m_tot = m_tot, **shell_vars)
             self.vel_rms = self.vel_dist(angles, **shell_vars)

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='xkn',
-    version='0.3',
+    version='0.3.1',
     author='Giacomo Ricigliano',
     author_email='giacomo.ricigliano@gmail.com',
     description='Semi-analytic KN framework',
