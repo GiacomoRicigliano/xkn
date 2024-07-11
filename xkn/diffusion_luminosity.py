@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from scipy.interpolate import interp1d, RegularGridInterpolator
 
@@ -5,9 +6,11 @@ from . import nuclear_heat as nh
 from .utils import c, day2sec
 from .incomplete_gamma import scaled_upper_gamma
 
-sug = np.frompyfunc(
-    scaled_upper_gamma, 2, 1
-)  # scaled upper incomplete gamma function, i.e exp(z) * Gamma(s, z)
+# Note: np.frompyfunc returns dtype=object, while np.vectorize handles the type
+# correctly. In this particular applications, np.frompyfunc leads to a 50% slow
+# down, probably because of the type mishandling, so np.vectorize is
+# preferable.
+sug = np.vectorize(scaled_upper_gamma, otypes=["float64"]) # scaled upper incomplete gamma function, i.e exp(z) * Gamma(s, z)
 
 
 def generate_diff_lums(
