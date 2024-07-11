@@ -5,9 +5,11 @@ listed here, please contact anyone on this list and raise your concern.
 Albino Perego
 Diego Vescovi
 Eleonora Loffredo
+Federico Maria Guercilena
 Giacomo Ricigliano
 Lukas Lippold
 Matteo Breschi
 Ssohrab Borhanian
+Valentina Fusaro
 Vsevolod Nedora
 Walter Del Pozzo
