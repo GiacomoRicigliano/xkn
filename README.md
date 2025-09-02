@@ -11,12 +11,7 @@ This version is not optimized for MC, there is no documentation yet and some fun
 
 It is only intended to be explored in order to acquire familiarity and start using the basic functionalities.
 
-The development is in progress, here the predicted timeline:
-
-- End of 2023:          Extensive documentation
-- First months of 2024: First beta release
-
-Please, check the repo https://github.com/GiacomoRicigliano/xkn regularly for updates.
+The development is in progress, please, check the repo https://github.com/GiacomoRicigliano/xkn regularly for updates.
 
 ## Installation
 
