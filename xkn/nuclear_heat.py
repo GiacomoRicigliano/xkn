@@ -67,10 +67,11 @@ class NuclearHeat(object):
 ########
 class SkynetFits(object):
     # file reading
+
     filename = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "interp_tables",
-        "skynet_fit_parameters.dat",
+        "epsdatafit.dat" #"skynet_fit_parameters_smooth_5tau.dat" #"skynet_fit_parameters.dat",
     )
     tau_raw, entropy_raw, ye_raw, A_raw, alpha_raw = np.loadtxt(
         filename, unpack=True, usecols=(0, 1, 2, 3, 4)
@@ -84,22 +85,35 @@ class SkynetFits(object):
     alphas = alpha_raw.reshape((len(taus), len(entropys), len(yes)))
 
     # Linear 3D interpolation of the parameters
+    method="linear"
     A_interp = RegularGridInterpolator(
-        (taus, entropys, yes), As, bounds_error=False, fill_value=None, method="nearest"
+        (taus, entropys, yes), As, bounds_error=False, fill_value=None, method=method
     )
     alpha_interp = RegularGridInterpolator(
         (taus, entropys, yes),
         alphas,
         bounds_error=False,
         fill_value=None,
-        method="nearest",
+        method=method,
     )
 
 
 # function calculating touple of parameters for given set of inputs
 def skynet_heating_params(ye, s, tau):  # units: s[k_B/baryon] tau[ms]
     A = SkynetFits.A_interp((tau, s, ye))
-    alpha = SkynetFits.alpha_interp((tau, s, ye))
+    alpha = SkynetFits.alpha_interp((tau, s, ye)) 
+    # if ye > 0.53:  # values for Ni56 decay up to 10 days
+    #     A = np.array(1.4e10)
+    #     alpha = np.array(0.69)
+    # elif ye > 0.51:  # values for Ni56 decay up to 10 days
+    #     A = np.array(2.2e10)
+    #     alpha = np.array(0.53)
+    # elif ye > 0.48:  # values for Ni56 decay up to 10 days
+    #     A = np.array(1.9e10)
+    #     alpha = np.array(0.56)
+    # elif ye > 0.45:  # values for Ni56 decay up to 10 days
+    #     A = np.array(1.4e10)
+    #     alpha = np.array(0.69)
     return A * day2sec**alpha, alpha  # units: A[erg/s/g]
 
 

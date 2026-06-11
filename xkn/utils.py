@@ -85,6 +85,7 @@ class ExpansionModelSingleSpherical(object):
         )
 
     def func_vel(self, x):
+        # TODO reference?
         x2 = x * x
         x3 = x2 * x  # 2.1875 = 35./16.
         x5 = x3 * x2  # 1.3125 = 105./80.
@@ -121,11 +122,13 @@ class ExpansionModelSingleSpherical(object):
                 f'The vel_scale "{vel_scale}" is not recognized. Use "lin" or "log".'
             )
 
+        # TODO find better names
         if vel_law == "poly":
             m_vel = mass_ej * Msun * (1.0 + self.func_vel(vel / vel_max))  # [g]
         elif vel_law == "uniform":
             m_vel = mass_ej * Msun * (1.0 - (vel / vel_max))  # [g]
 
+        # TODO extract tau_photo global parameter from the equation
         t_diff = np.sqrt(opacity * m_vel / (omegas * vel * c2))  # [s]
         t_fs = t_diff * np.sqrt(1.5 / vel)
 
@@ -138,6 +141,7 @@ def init_times(
     t_max=None,
     t_num=None,
     t_start_filter=None,
+    t_type_data=None,
     mag=None,
     toll=0.05,
 ):
@@ -147,32 +151,49 @@ def init_times(
     elif t_scale == "log":
         return np.logspace(np.log10(t_min), np.log10(t_max), num=t_num)
     elif t_scale == "measures":
-        return time_measures(mag, t_start_filter, toll)
+        return time_measures(mag, t_start_filter, t_type_data, toll)
     elif t_scale == "all_measures":
-        return time_measures(mag, t_start_filter, None)
+        return time_measures(mag, t_start_filter, t_type_data, None)
     else:
         sys.exit("Error! Wrong option for the time scale")
 
 
-def time_measures(mag, t_start_filter, toll):
+def time_measures(mag, t_start_filter, t_type_data, toll):
     all_time = (
         np.unique(
             np.sort(np.array([el for lam in mag for el in list(mag[lam]["time"])]))
         )
         - t_start_filter
     )
-    if toll is None:
-        return all_time * day2sec
 
-    times = []
-    ii = 0
-    for i in range(1, len(all_time)):
-        if all_time[i] < (1 + toll) * all_time[ii]:
-            continue
-        times.append(0.5 * (all_time[i] + all_time[ii]))
-        ii = i
-    times = [all_time[0]] + times + [all_time[-1]]
-    return np.array(times) * day2sec
+    # data in Giulian days
+    if t_type_data == "days": 
+        if toll is None:
+            return all_time * day2sec
+
+        times = []
+        ii = 0
+        for i in range(1, len(all_time)-1):
+            if all_time[i] < (1 + toll) * all_time[ii]:
+                continue
+            times.append(0.5 * (all_time[i] + all_time[ii]))
+            ii = i
+        times = [all_time[0]] + times + [all_time[-1]]
+        return np.array(times) * day2sec
+    # data in seconds + gps
+    else:
+        if toll is None:
+            return all_time
+
+        times = []
+        ii = 0
+        for i in range(1, len(all_time)-1):
+            if all_time[i] < (1 + toll) * all_time[ii]:
+                continue
+            times.append(0.5 * (all_time[i] + all_time[ii]))
+            ii = i
+        times = [all_time[0]] + times + [all_time[-1]]
+        return np.array(times)
 
 
 def time_safe(times, t_0):
@@ -357,6 +378,7 @@ def check_dict_variables(
         none_keys = []
         dic_bool = True
 
+    # var = (var_list, var_name_list) --> check, if var in var_list are None and report the corresponding name from var_name_list
     if var:
         none_vars = [var[1][i] for i in range(len(var[0])) if var[0][i] is None]
         if none_vars:

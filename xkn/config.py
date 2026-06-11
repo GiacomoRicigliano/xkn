@@ -242,8 +242,8 @@ glob_params_info_dict = {
     ],
     "filter_data_path": ["str", "path to the data"],
     "lam_list": ["int_list", "values need to be single-space separated"],
-    "lam_min": ["int", "minimum wavelenght in nm considered from data"],
-    "lam_max": ["int", "maximum wavelenght in nm considered from data"],
+    "lam_min": ["int", "minimum wavelength in nm considered from data"],
+    "lam_max": ["int", "maximum wavelength in nm considered from data"],
     "mag_min": ["float", "minimum magnitude considered from data"],
     "mag_max": ["float", "maximum magnitude considered from data"],
     # data type
@@ -276,7 +276,11 @@ glob_params_info_dict = {
     "t_max": ["float", "maximum time in s"],
     "t_start_filter": [
         "float",
-        "start time of filter data in respective units (e.g. Julian days for AT2017gfo)",
+        "start time of filter data in respective units (e.g. Julian days or GPS time (sec))",
+    ],
+    "t_type_data": [
+        "str",
+        "time array type of data [days, seconds]"
     ],
     "t_toll": [
         "float",
@@ -286,16 +290,16 @@ glob_params_info_dict = {
     "vel_min": ["float", "minimum velocity for the grossman model"],
     "vel_num": ["int", "number of velocity points for the grossman model"],
     "vel_scale": ["str", "scale for the velocity in the grossman model [lin, log]"],
-    "vel_law": ["str", "relationship between vel_max and vel_rms [poly, uniform]"],
-    # other parameters
+    "vel_law": ["str", "relationship between vel_max and vel_rms [poly, uniform]"], 
+    # other parameters (vedi articolo 2021 pag 3)
     "alpha": ["float", "parameter for nuclear heating rate [1.3]"],
     "sigma0": ["float", "parameter for nuclear heating rate [0.11]"],
     "t0eps": ["float", "parameter for nuclear heating rate [1.3]"],
     "a_eps_nuc": ["float", "parameter for nuclear heating rate [0.5]"],
     "b_eps_nuc": ["float", "parameter for nuclear heating rate [2.5]"],
     "t_eps_nuc": ["float", "parameter for nuclear heating rate [1.0]"],
-    "cnst_eff": ["float", "parameter for constant heating efficiency [2.958]"],
-    "idx_eff": ["float", "parameter for power law heating efficiency [0.176]"],
+    "cnst_eff": ["float", "parameter for constant heating efficiency [0.866]"],
+    "idx_eff": ["float", "parameter for power law heating efficiency [0.243]"],
     # grossman parameters
     "rad_shell": ["bool", "auxiliary switch [False]"],
     # ricigliano_lippold parameters
@@ -305,7 +309,7 @@ glob_params_info_dict = {
     # thin_shells parameters
     "thin_shells": [
         "bool",
-        "if True applies the opcitally thin shells correction (only for ricigliano_lippold model)",
+        "if True applies the optically thin shells correction (only for ricigliano_lippold model)",
     ],
     "n_thin": ["int", "number of optically thin shells"],
     "shell_const": [
@@ -346,12 +350,13 @@ comp_params_info_dict = {
 
 glob_vars_info_dict = {
     "sigma_sys": ["float", "error absorbing any source of systematics in the model"],
-    "view_angle": ["float", "source viewing angle in radians"],
+    "view_angle": ["float", "source viewing angle in radians (iota for bajes)"],
     "distance": ["float", "source distance in Mpc"],
     "m_disk": ["float", "mass of remnant disk in Msun"],
     "T_floor_Ni": ["float", "floor temperature for Ni composition in K"],
     "T_floor_LA": ["float", "floor temperature for LA composition in K"],
     "nuc_fac": ["float", "auxiliary variable [1]"],
+    "nuc_corr": ["float", "auxiliary coefficient for heating rate"],
     "eps0": ["float", "auxiliary variable [2e18]"],
 }
 

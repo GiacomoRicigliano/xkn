@@ -46,15 +46,24 @@ def plot_magnitudes(
 ):
 
     mags_d = deepcopy(mkn.mag)
+    # mags_m = mkn.calc_magnitudes(mkn_vars, measures=True)
     mags_a = mkn.calc_magnitudes(mkn_vars, measures=False)
 
     colors = plt.get_cmap("Spectral")(np.linspace(0, 1, len(mags_a.keys())))[::-1]
 
     # correct time axis of data from days to seconds
-    for i, lam in enumerate(mags_d):
-        mags_d[lam]["time"] = (
-            mags_d[lam]["time"] - mkn.glob_params["t_start_filter"]
-        ) * day2sec
+    if mkn.glob_params["t_type_data"] == "days":
+        # correct time axis of data from days to seconds
+        for i, lam in enumerate(mags_d):
+            mags_d[lam]["time"] = (
+                mags_d[lam]["time"] - mkn.glob_params["t_start_filter"]
+            ) * day2sec
+    else:
+        # correct time axis of data just subtracting the t_start_filter
+        for i, lam in enumerate(mags_d):
+            mags_d[lam]["time"] = (
+                mags_d[lam]["time"] - mkn.glob_params["t_start_filter"]
+            )
 
     if ax is None:
         ax_none = True
@@ -62,24 +71,33 @@ def plot_magnitudes(
 
     ymin = np.inf
     ymax = -np.inf
-    for i, lam in enumerate(mags_a):
-        if not i:
-            xmin = mags_a[lam]["time"][0] * sec2day
-            xmax = mags_a[lam]["time"][-1] * sec2day
-        ymin = min(ymin, np.amin(mags_d[lam]["mag"]))
-        ymax = max(ymax, np.amax(mags_d[lam]["mag"]))
-        ax.plot(mags_a[lam]["time"] * sec2day, mags_a[lam]["mag"], c=colors[i])
-    for i, lam in enumerate(mags_a):
-        ax.plot(
-            mags_d[lam]["time"] * sec2day,
-            mags_d[lam]["mag"],
-            "D",
-            c=colors[i],
-            markeredgecolor="k",
-            label=f"{lam}",
-        )
+    if mkn.glob_params["filter_usage"] == "measures":
+        for i, lam in enumerate(mags_a):
+            if not i:
+                xmin = mags_a[lam]["time"][0] * sec2day
+                xmax = mags_a[lam]["time"][-1] * sec2day
+            ymin = min(ymin, np.amin(mags_d[lam]["mag"]))
+            ymax = max(ymax, np.amax(mags_d[lam]["mag"]))
+            ax.plot(mags_a[lam]["time"] * sec2day, mags_a[lam]["mag"], c=colors[i])
+        for i, lam in enumerate(mags_a):
+            ax.plot(
+                mags_d[lam]["time"] * sec2day,
+                mags_d[lam]["mag"],
+                "D",
+                c=colors[i],
+                markeredgecolor="k",
+                label=f"{lam}",
+            )
+    elif mkn.glob_params["filter_usage"] == "properties":
+        for i, lam in enumerate(mags_a):
+            if not i:
+                xmin = mags_a[lam]["time"][0] * sec2day
+                xmax = mags_a[lam]["time"][-1] * sec2day
+            ymin = min(ymin, np.amin(mags_a[lam]["mag"]))
+            ymax = max(ymax, np.amax(mags_a[lam]["mag"]))
+            ax.plot(mags_a[lam]["time"] * sec2day, mags_a[lam]["mag"], c=colors[i], label=f"{lam}")
 
-    ymin *= 0.99
+    ymin *= 0.95
     ymax *= 1.01
 
     ax.grid(which="both", lw=1)

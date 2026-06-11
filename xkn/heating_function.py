@@ -33,7 +33,6 @@ class HeatingFunction(object):
             return self.heat_func(ye, time, **kwargs)[:, 0]
 
 
-# specifico il nome del file di input di Lippuner+ 2015
 def interpolating_function(s, tau):
     filename = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
@@ -67,7 +66,6 @@ def interpolating_function(s, tau):
     )
     t_array = np.logspace(-2.0, 2.0, num=50, endpoint=True)
 
-    # creo una matrice direttamente dell'heating rate
     idx = np.nonzero(
         np.logical_and(
             s_ar == find_nearest(s_ar, s), tau_ar == find_nearest(tau_ar, tau)

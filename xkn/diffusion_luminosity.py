@@ -12,7 +12,6 @@ from .incomplete_gamma import scaled_upper_gamma
 # preferable.
 sug = np.vectorize(scaled_upper_gamma, otypes=["float64"]) # scaled upper incomplete gamma function, i.e exp(z) * Gamma(s, z)
 
-
 def generate_diff_lums(
     ye, entropy, tau, times, glob_vars, shell_params, glob_params, **kwargs
 ):
@@ -20,18 +19,20 @@ def generate_diff_lums(
         A_alphas = [
             nh.skynet_heating_params(YE, S, TAU) for YE, S, TAU in zip(ye, entropy, tau)
         ]
+
     elif shell_params["heat_model"] == "K":
         A_alphas = len(ye) * [
             (1.95e10 * glob_vars["eps0"] / 2e18, glob_params["alpha"])
         ]
+    
     # TODO use correct heating fit params for PBR and LR
     elif shell_params["heat_model"] == "PBR":
-        A_alphas = len(ye) * [
+        A_alphas = len(ye) * [   
             (1.95e10 * glob_vars["eps0"] / 2e18, glob_params["alpha"])
         ]
     elif shell_params["heat_model"] == "LR":
         A_alphas = [
-            nh.skynet_heating_params(YE, S, TAU) for YE, S, TAU in zip(ye, entropy, tau)
+            nh.skynet_heating_parax
         ]
     else:
         sys.exit(
@@ -43,16 +44,18 @@ def generate_diff_lums(
             + '"K" for Korobkin 2015'
         )
 
-    return [
-        DiffusionLum(
-            glob_params["t_0"],
-            times,
-            glob_params["T_0"],
-            glob_params["cnst_eff"] * A,
-            glob_params["idx_eff"] + alpha,
+    result = []
+    for A, alpha in A_alphas:
+        result.append(
+            DiffusionLum(
+                glob_params["t_0"],
+                times,
+                glob_params["T_0"],
+                glob_params["cnst_eff"] * A * glob_vars["nuc_corr"] * glob_params["t_0"]**(-alpha),
+                glob_params["idx_eff"] + alpha,
+            )
         )
-        for (A, alpha) in A_alphas
-    ]
+    return result
 
 
 # definition of luminosity class:
@@ -81,7 +84,6 @@ class DiffusionLum(object):
 
     # class instance definition:
     def __init__(self, t_0, time, T_0, A, alpha):
-
         # class instance parameters(cgs):
         self.t_0 = t_0
         self.t_f = time[-1]
@@ -100,7 +102,7 @@ class DiffusionLum(object):
             * 2**0.5
             / np.power(2, self.alpha / 2)
             * self.A
-            * np.power(t_0, -self.alpha / 2)
+            * np.power(t_0, self.alpha / 2)
             / self.E_0
         )
         self.gamma_factor = -0.5 * (np.pi * DiffusionLum.n * self.t) ** 2 / t_0

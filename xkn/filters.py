@@ -8,6 +8,8 @@ from scipy import interpolate, integrate
 
 from . import utils
 
+from .utils import sec2day
+
 ###-------------------------------------------------------------------------------------------------
 # ------Reading data---------------------------------------------------------------------------------
 ###-------------------------------------------------------------------------------------------------
@@ -23,6 +25,8 @@ def read_filters(
     filter_data_path,
     t_min,
     t_max,
+    t_start_filter,
+    t_type_data,
     filter_dict="telescopes",
     filter_dict_path=None,
     dered_correction=True,
@@ -36,6 +40,8 @@ def read_filters(
             filter_data_path,
             t_min,
             t_max,
+            t_start_filter,
+            t_type_data,
             filter_dict,
             filter_dict_path,
             dered_correction,
@@ -68,6 +74,8 @@ def read_filter_measures(
     filter_data_path,
     t_min,
     t_max,
+    t_start_filter,
+    t_type_data,
     filter_dict="telescopes",
     filter_dict_path=None,
     dered_correction=True,
@@ -99,10 +107,20 @@ def read_filter_measures(
             times, mags, sigmas = np.loadtxt(
                 os.path.join(filter_data_path, fname), unpack=True, ndmin=1
             )
-            t_mask = np.logical_and(times > t_min, times < t_max)
+
+            if t_type_data == "days":  # data in Giulian days
+                t_min_up = t_min * sec2day + t_start_filter
+                t_max_up = t_max * sec2day + t_start_filter
+
+            else:   # data in gps + sec 
+                t_min_up = t_min + t_start_filter
+                t_max_up = t_max + t_start_filter
+            
+            t_mask = np.logical_and(times >= t_min_up, times <= t_max_up)
             times = np.atleast_1d(times[t_mask])
             mags = np.atleast_1d(mags[t_mask])
             sigmas = np.atleast_1d(sigmas[t_mask])
+            
 
             # if the magnitude type is vega then convert the magnitudes to AB
             if mag_type == "vega":
@@ -444,32 +462,56 @@ def calc_magnitudes(
     measures=False,
     mag=None,
     t_start_filter=None,
+    t_type_data=None,
     **kwargs,
 ):
 
     if measures:
-        # calculate the magnitudes at the times specified in mag
-        return {
-            lam: {
-                "time": (mag[lam]["time"] - t_start_filter) * utils.day2sec,
-                "mag": np.interp(
-                    (mag[lam]["time"] - t_start_filter) * utils.day2sec,
-                    times,
-                    m_filter(
-                        flux_factors,
-                        dic_filt[lam]["lambda"],
-                        distance,
-                        redshift,
-                        radius_photo,
-                        T_photo=T_photo,
-                        lum_shells=lum_shells,
-                        T_shells=T_shells,
-                        omegas=omegas,
+        if t_type_data=="days":  # data in giulian days
+            return {
+                lam: {
+                    "time": (mag[lam]["time"] - t_start_filter) * utils.day2sec,
+                    "mag": np.interp(
+                        (mag[lam]["time"] - t_start_filter) * utils.day2sec,
+                        times,
+                        m_filter(
+                            flux_factors,
+                            dic_filt[lam]["lambda"],
+                            distance,
+                            redshift,
+                            radius_photo,
+                            T_photo=T_photo,
+                            lum_shells=lum_shells,
+                            T_shells=T_shells,
+                            omegas=omegas,
+                        ),
                     ),
-                ),
+                }
+                for lam in lams
             }
-            for lam in lams
-        }
+        
+        else:      # data in gps time
+            return {
+                lam: {
+                    "time": (mag[lam]["time"] - t_start_filter),
+                    "mag": np.interp(
+                        (mag[lam]["time"] - t_start_filter),
+                        times,
+                        m_filter(
+                            flux_factors,
+                            dic_filt[lam]["lambda"],
+                            distance,
+                            redshift,
+                            radius_photo,
+                            T_photo=T_photo,
+                            lum_shells=lum_shells,
+                            T_shells=T_shells,
+                            omegas=omegas,
+                        ),
+                    ),
+                }
+                for lam in lams
+            }
 
     else:
         # calculate the magnitudes at the specified times array
@@ -522,6 +564,7 @@ def calc_residuals(
     redshift,
     mag,
     t_start_filter,
+    t_type_data,
     radius_photo,
     T_photo=None,
     lum_shells=None,
@@ -531,26 +574,46 @@ def calc_residuals(
     **kwargs,
 ):
 
-    # calculate the difference in magnitudes at the times specified in mag
-    mag_diffs = {
-        lam: np.interp(
-            (mag[lam]["time"] - t_start_filter) * utils.day2sec,
-            times,
-            m_filter(
-                flux_factors,
-                dic_filt[lam]["lambda"],
-                distance,
-                redshift,
-                radius_photo,
-                T_photo=T_photo,
-                lum_shells=lum_shells,
-                T_shells=T_shells,
-                omegas=omegas,
-            ),
-        )
-        - mag[lam]["mag"]
-        for lam in lams
-    }
+    if t_type_data=="days":   # data in giulian days
+        mag_diffs = {
+            lam: np.interp(
+                (mag[lam]["time"] - t_start_filter) * utils.day2sec,
+                times,
+                m_filter(
+                    flux_factors,
+                    dic_filt[lam]["lambda"],
+                    distance,
+                    redshift,
+                    radius_photo,
+                    T_photo=T_photo,
+                    lum_shells=lum_shells,
+                    T_shells=T_shells,
+                    omegas=omegas,
+                ),
+            )
+            - mag[lam]["mag"]
+            for lam in lams
+        }
+    else:   # data in gps time
+        mag_diffs = {
+            lam: np.interp(
+                (mag[lam]["time"] - t_start_filter),
+                times,
+                m_filter(
+                    flux_factors,
+                    dic_filt[lam]["lambda"],
+                    distance,
+                    redshift,
+                    radius_photo,
+                    T_photo=T_photo,
+                    lum_shells=lum_shells,
+                    T_shells=T_shells,
+                    omegas=omegas,
+                ),
+            )
+            - mag[lam]["mag"]
+            for lam in lams
+        }
 
     return {
         lam: mag_diffs[lam]
@@ -667,6 +730,7 @@ def prep_inj_mag(
                     sigma_min = np.amin(injection_mag[lam]["sigma"])
                 if sigma_max is None:
                     sigma_max = np.amax(injection_mag[lam]["sigma"])
+                    
                 injection_mag[lam]["mag"] = new_mags[lam]["mag"]
                 injection_mag[lam]["time"] = (
                     new_mags[lam]["time"] / utils.day2sec + t_start_filter

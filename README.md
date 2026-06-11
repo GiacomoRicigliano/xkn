@@ -5,13 +5,7 @@
 - Generate bolometric and broad-band light-curves 
 - Compare to AT2017gfo or other data 
 
-## WARNING: This is an ALPHA version!!!
-
-This version is not optimized for MC, there is no documentation yet and some functionalities are incomplete.
-
-It is only intended to be explored in order to acquire familiarity and start using the basic functionalities.
-
-The development is in progress, please, check the repo https://github.com/GiacomoRicigliano/xkn regularly for updates.
+The development is in progress, please, check the repo https://github.com/GiacomoRicigliano/xkn regularly for updates. There is no documentation yet and some functionalities are incomplete.
 
 ## Installation
 

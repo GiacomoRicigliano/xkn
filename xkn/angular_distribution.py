@@ -104,7 +104,7 @@ class VelocityAngularDistribution(object):
         elif angular_law_distribution == "step":
             self.velocity_angular_distribution = step_distribution
         else:
-            sys.exit("Unknown opacity angular distribution")
+            sys.exit("Unknown velocity angular distribution")
 
     def __call__(self, angles, **kwargs):
         return self.velocity_angular_distribution(self.key, angles, **kwargs)

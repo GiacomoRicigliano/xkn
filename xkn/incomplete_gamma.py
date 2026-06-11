@@ -7,7 +7,7 @@ import numpy as np
 
 
 # Compute nodes and weights (without h) for the double exponential (or
-# tanh-sinh) rule with mpmath, coonvert them to Python floats, and scale the
+# tanh-sinh) rule with mpmath, convert them to Python floats, and scale the
 # nodes for the interval (0, 1).
 with mp.workdps(30):
     m = 5
@@ -34,7 +34,6 @@ def scaled_upper_gamma(s, z):
 
     # Close to the origin, use a sort of MacLaurin series
     if z > -0.97:
-
         r = 0
         g = gamma(s)
         G = g * s
@@ -47,7 +46,6 @@ def scaled_upper_gamma(s, z):
 
     # For large arguments, use an asymptotic series
     elif z < -50:
-
         r = 0.0
         S = s - 1
         u = 1.0

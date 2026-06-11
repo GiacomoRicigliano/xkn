@@ -1,0 +1,344 @@
+{
+    "445": {
+        "band": [
+            "B"
+        ],
+        "filename": [
+            "B.txt"
+        ],
+        "lambda": 445e-9,
+        "lambdas": [
+            445e-9
+        ],
+        "name": [
+            "B"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "365": {
+        "band": [
+            "U"
+        ],
+        "filename": [
+            "U.txt"
+        ],
+        "lambda": 365e-9,
+        "lambdas": [
+            365e-9
+        ],
+        "name": [
+            "U"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "475": {
+        "band": [
+            "g"
+        ],
+        "filename": [
+            "g.txt"
+        ],
+        "lambda": 475e-9,
+        "lambdas": [
+            475e-9
+        ],
+        "name": [
+            "g"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "551": {
+        "band": [
+            "V"
+        ],
+        "filename": [
+            "V.txt"
+        ],
+        "lambda": 551e-9,
+        "lambdas": [
+            551e-9
+        ],
+        "name": [
+            "V"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "235": {
+        "band": [
+            "W"
+        ],
+        "filename": [
+            "W.txt"
+        ],
+        "lambda": 235e-9,
+        "lambdas": [
+            235e-9
+        ],
+        "name": [
+            "W"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "1220": {
+        "band": [
+            "J"
+        ],
+        "filename": [
+            "J.txt"
+        ],
+        "lambda": 1220e-9,
+        "lambdas": [
+            1220e-9
+        ],
+        "name": [
+            "J"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "1055": {
+        "band": [
+            "J1"
+        ],
+        "filename": [
+            "J1.txt"
+        ],
+        "lambda": 1055e-9,
+        "lambdas": [
+            1055e-9
+        ],
+        "name": [
+            "J1"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "2190": {
+        "band": [
+            "K"
+        ],
+        "filename": [
+            "K.txt"
+        ],
+        "lambda":2190e-9,
+        "lambdas": [
+            2190e-9
+        ],
+        "name": [
+            "K"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "2150": {
+        "band": [
+            "Ks"
+        ],
+        "filename": [
+            "Ks.txt"
+        ],
+        "lambda": 2150e-9,
+        "lambdas": [
+            2150e-9
+        ],
+        "name": [
+            "Ks"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "1630": {
+        "band": [
+            "H"
+        ],
+        "filename": [
+            "H.txt"
+        ],
+        "lambda": 1630e-9,
+        "lambdas": [
+            1630e-9
+        ],
+        "name": [
+            "H"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "658": {
+        "band": [
+            "R"
+        ],
+        "filename": [
+            "R.txt"
+        ],
+        "lambda":658e-9,
+        "lambdas": [
+            658e-9
+        ],
+        "name": [
+            "R"
+        ],
+        "type": [
+            "fake"
+        ]        
+    },
+    "775": {
+        "band": [
+            "I"
+        ],
+        "filename": [
+            "I.txt"
+        ],
+        "lambda":775e-9,
+        "lambdas": [
+            775e-9
+        ],
+        "name": [
+            "I"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "850": {
+        "band": [
+            "z"
+        ],
+        "filename": [
+            "z.txt"
+        ],
+        "lambda":850e-9,
+        "lambdas": [
+            850e-9
+        ],
+        "name": [
+            "z"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "1162": {
+        "band": [
+            "F110W"
+        ],
+        "filename": [
+            "F110W.txt"
+        ],
+        "lambda": 1162.4e-9,
+        "lambdas": [
+            1162.4e-9
+        ],
+        "name": [
+            "F110W"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "1539": {
+        "band": [
+            "F160W"
+        ],
+        "filename": [
+            "F160W.txt"
+        ],
+        "lambda": 1539.2e-9,
+        "lambdas": [
+            1539.2e-9
+        ],
+        "name": [
+            "F160W"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "336": {
+        "band": [
+            "F336W"
+        ],
+        "filename": [
+            "F336W.txt"
+        ],
+        "lambda": 335.9e-9,
+        "lambdas": [
+            335.9e-9
+        ],
+        "name": [
+            "F336W"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "479": {
+        "band": [
+            "F475W"
+        ],
+        "filename": [
+            "F475W.txt"
+        ],
+        "lambda": 479.2e-9,
+        "lambdas": [
+            479.2e-9
+        ],
+        "name": [
+            "F475W"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "593": {
+        "band": [
+            "F606W"
+        ],
+        "filename": [
+            "F606W.txt"
+        ],
+        "lambda": 592.5e-9,
+        "lambdas": [
+            592.5e-9
+        ],
+        "name": [
+            "F606W"
+        ],
+        "type": [
+            "fake"
+        ]
+    },
+    "806": {
+        "band": [
+            "F814W"
+        ],
+        "filename": [
+            "F814W.txt"
+        ],
+        "lambda": 805.8e-9,
+        "lambdas": [
+            805.8e-9
+        ],
+        "name": [
+            "F814W"
+        ],
+        "type": [
+            "fake"
+        ]
+    }
+}

@@ -13,9 +13,6 @@ from .ejecta import Ejecta
 from .plotting import plot_magnitudes
 from .utils import (
     Mpc2cm,
-    sec2day,
-    day2sec,
-    fourpi,
     ObserverProjection,
     init_times,
     time_safe,
@@ -112,10 +109,10 @@ class MKN:
             self.dic_filt_full, self.lams_full, self.mag_full = flt.read_filters(
                 self.glob_params["filter_usage"],
                 self.glob_params["filter_data_path"],
-                self.glob_params["t_min"] * sec2day
-                + self.glob_params["t_start_filter"],
-                self.glob_params["t_max"] * sec2day
-                + self.glob_params["t_start_filter"],
+                self.glob_params["t_min"],
+                self.glob_params["t_max"],
+                self.glob_params["t_start_filter"],
+                self.glob_params["t_type_data"],
                 filter_dict=self.glob_params["filter_dictionary"],
                 filter_dict_path=self.glob_params["filter_dictionary_path"],
                 dered_correction=self.glob_params["dered_correction"],
@@ -186,6 +183,7 @@ class MKN:
                 self.glob_params["t_max"],
                 self.glob_params["t_num"],
                 self.glob_params["t_start_filter"],
+                self.glob_params["t_type_data"],
                 self.mag,
                 toll,
             )
@@ -256,7 +254,8 @@ class MKN:
                 mag_min=inj_dict["glob_params"]["mag_min"],
                 mag_max=inj_dict["glob_params"]["mag_max"],
             )
-        self.logger.info("Initialized injection.")
+            self.logger.info("Initialized injection.")
+            return mag
 
     #####
     # from obs frame to source frame time
@@ -315,6 +314,7 @@ class MKN:
             measures=measures,
             mag=self.mag,
             t_start_filter=self.glob_params["t_start_filter"],
+            t_type_data=self.glob_params["t_type_data"]
         )
 
     #####
@@ -331,6 +331,7 @@ class MKN:
             self.redshift(mkn_vars["glob"]["distance"]),
             self.mag,
             self.glob_params["t_start_filter"],
+            self.glob_params["t_type_data"],
             self.ejecta.radius_photo,
             T_photo=self.ejecta.T_photo,
             lum_shells=self.ejecta.lum_shells,
@@ -343,6 +344,7 @@ class MKN:
         return -0.5 * sum(
             [sum(residual**2) for residual in self.calc_residuals(mkn_vars).values()]
         ) + self.calc_log_like_normalization(mkn_vars)
+        # TODO why not remove the norm and have log_like = 0 as perfect agreement?
 
     def calc_log_like_normalization(self, mkn_vars):
         return (
