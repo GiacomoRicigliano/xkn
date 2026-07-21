@@ -7,7 +7,7 @@ from . import utils
 
 
 class Thermalization(object):
-
+    
     def __init__(self, therm_model):
         if therm_model in ["BKWM", "BKWM_dens"]:
             self.therm_efficiency = BKWM_therm_efficiency
@@ -44,36 +44,16 @@ class Thermalization(object):
             self._rgi_d = RGI((y, x), np.array(d), method="linear",
                               bounds_error=False, fill_value=None)
 
-            def _make_elementwise(rgi):
-                """Return fa(xnew, ynew) -> 1-D array of length n_angles."""
-                def _call(xn, yn):
-                    xn, yn = np.atleast_1d(xn), np.atleast_1d(yn)
-                    return rgi(np.column_stack([yn, xn]))
-                return _call
+            # def _make_elementwise(rgi):
+            #     """Return fa(xnew, ynew) -> 1-D array of length n_angles."""
+            #     def _call(xn, yn):
+            #         xn, yn = np.atleast_1d(xn), np.atleast_1d(yn)
+            #         return rgi(np.column_stack([yn, xn]))
+            #     return _call
 
-            self.fa = _make_elementwise(self._rgi_a)
-            self.fb = _make_elementwise(self._rgi_b)
-            self.fd = _make_elementwise(self._rgi_d)
-
-            # TODO: remove the nested _call and make the class pickable ?
-            # @staticmethod
-            # def _eval_rgi(rgi, xn, yn):
-            #     """Element-wise query of a RegularGridInterpolator.
-            #     Table axes are (velocity, log10-mass) = (y, x). Stacks [vel,
-            #     log10_mass] pairs into shape (n_angles, 2), so this evaluates
-            #     exactly n_angles points instead of the n_angles^2 outer-product
-            #     grid that the old interp2d semantics produced (from which only
-            #     the diagonal was ever used via np.diag).
-            #     """
-            #     xn, yn = np.atleast_1d(xn), np.atleast_1d(yn)
-            #     return rgi(np.column_stack([yn, xn]))
-            #
-            # def fa(self, xn, yn):
-            #     return self._eval_rgi(self._rgi_a, xn, yn)
-            # def fb(self, xn, yn):
-            #     return self._eval_rgi(self._rgi_b, xn, yn)
-            # def fd(self, xn, yn):
-            #     return self._eval_rgi(self._rgi_d, xn, yn)
+            # self.fa = _make_elementwise(self._rgi_a)
+            # self.fb = _make_elementwise(self._rgi_b)
+            # self.fd = _make_elementwise(self._rgi_d)
 
         elif therm_model == "BKWM_1d":
             self.therm_efficiency = BKWM_therm_efficiency
@@ -167,6 +147,33 @@ class Thermalization(object):
     def __call__(self, **kwargs):
         return self.therm_efficiency(self, **kwargs)
 
+    def therm_efficiency_params_1d(self, omegas, mass_ej, vel):
+        # assign the value of x=m/v^2
+        xnew = utils.fourpi / omegas * mass_ej / vel**2
+        # compute the parameters by 1-d interpolation
+        return [np.array(func(xnew)) for func in [self.fa_1d, self.fb_1d, self.fd_1d]]
+    
+    @staticmethod
+    def _eval_rgi(rgi, xn, yn):
+        """Element-wise query of a RegularGridInterpolator.
+        Table axes are (velocity, log10-mass) = (y, x). Stacks [vel,
+        log10_mass] pairs into shape (n_angles, 2), so this evaluates
+        exactly n_angles points instead of the n_angles^2 outer-product
+        grid that the old interp2d semantics produced (from which only
+        the diagonal was ever used via np.diag).
+        """
+        xn, yn = np.atleast_1d(xn), np.atleast_1d(yn)
+        return rgi(np.column_stack([yn, xn]))
+            
+    def fa(self, xn, yn):
+        return self._eval_rgi(self._rgi_a, xn, yn)
+    
+    def fb(self, xn, yn):
+        return self._eval_rgi(self._rgi_b, xn, yn)
+
+    def fd(self, xn, yn):
+        return self._eval_rgi(self._rgi_d, xn, yn)
+    
     def therm_efficiency_params_2d(self, omegas, mass_ej, vel):
         # assign the values of the mass and velocity
         xnew = np.log10(utils.fourpi / omegas * mass_ej)  # mass     [Msun]
@@ -174,13 +181,7 @@ class Thermalization(object):
         # compute the parameters by linear interpolation in the table
         return [func(xnew, ynew) for func in [self.fa, self.fb, self.fd]]
 
-    def therm_efficiency_params_1d(self, omegas, mass_ej, vel):
-        # assign the value of x=m/v^2
-        xnew = utils.fourpi / omegas * mass_ej / vel**2
-        # compute the parameters by 1-d interpolation
-        return [np.array(func(xnew)) for func in [self.fa_1d, self.fb_1d, self.fd_1d]]
-
-
+    
 def BKWM_therm_efficiency(cls, **kwargs):
     if any(
         [
