@@ -341,31 +341,22 @@ class MKN:
         )
 
     def calc_log_like(self, mkn_vars):
-        return -0.5 * sum(
-            [sum(residual**2) for residual in self.calc_residuals(mkn_vars).values()]
-        ) + self.calc_log_like_normalization(mkn_vars)
+        residuals = self.calc_residuals(mkn_vars).values()
+        total_sq = np.sum(np.concatenate([r**2 for r in residuals]))
+        return -0.5 * total_sq + self.calc_log_like_normalization(mkn_vars)
         # TODO why not remove the norm and have log_like = 0 as perfect agreement?
 
     def calc_log_like_normalization(self, mkn_vars):
-        return (
-            -0.5
-            * len(self.lams)
-            * sum(
-                [
-                    sum(
-                        np.log(
-                            2
-                            * np.pi
-                            * (
-                                self.mag[lam]["sigma"] ** 2
-                                + mkn_vars["glob"]["sigma_sys"] ** 2
-                            )
-                        )
-                    )
-                    for lam in self.lams
-                ]
+        log_terms = np.concatenate([
+            np.log(
+                2 * np.pi * (
+                    self.mag[lam]["sigma"] ** 2
+                    + mkn_vars["glob"]["sigma_sys"] ** 2
+                )
             )
-        )
+            for lam in self.lams
+        ])
+        return -0.5 * len(self.lams) * np.sum(log_terms)
 
     #####
     # isotropized luminosity calculation for model consistency check

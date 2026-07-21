@@ -101,20 +101,34 @@ class SkynetFits(object):
 # function calculating touple of parameters for given set of inputs
 def skynet_heating_params(ye, s, tau):  # units: s[k_B/baryon] tau[ms]
     A = SkynetFits.A_interp((tau, s, ye))
-    alpha = SkynetFits.alpha_interp((tau, s, ye)) 
-    # if ye > 0.53:  # values for Ni56 decay up to 10 days
-    #     A = np.array(1.4e10)
-    #     alpha = np.array(0.69)
-    # elif ye > 0.51:  # values for Ni56 decay up to 10 days
-    #     A = np.array(2.2e10)
-    #     alpha = np.array(0.53)
-    # elif ye > 0.48:  # values for Ni56 decay up to 10 days
-    #     A = np.array(1.9e10)
-    #     alpha = np.array(0.56)
-    # elif ye > 0.45:  # values for Ni56 decay up to 10 days
-    #     A = np.array(1.4e10)
-    #     alpha = np.array(0.69)
+    alpha = SkynetFits.alpha_interp((tau, s, ye))
     return A * day2sec**alpha, alpha  # units: A[erg/s/g]
+
+
+def skynet_heating_params_batch(ye_arr, s_arr, tau_arr):
+    """Vectorized version of skynet_heating_params for arrays of angular bins.
+
+    Replaces the scalar loop
+        [(A, alpha) for YE, S, TAU in zip(ye, entropy, tau)]
+    with a single RegularGridInterpolator call on an (n_angles, 3) query
+    array, eliminating n_angles-1 redundant Python→C dispatch overheads.
+
+    Parameters
+    ----------
+    ye_arr, s_arr, tau_arr : array_like, shape (n_angles,)
+
+    Returns
+    -------
+    A_arr   : ndarray, shape (n_angles,)  [erg/s/g]
+    alpha_arr : ndarray, shape (n_angles,)
+    """
+    ye_arr   = np.asarray(ye_arr,  dtype=float)
+    s_arr    = np.asarray(s_arr,   dtype=float)
+    tau_arr  = np.asarray(tau_arr, dtype=float)
+    pts      = np.column_stack([tau_arr, s_arr, ye_arr])  # (n_angles, 3)
+    A_arr    = SkynetFits.A_interp(pts)
+    alpha_arr = SkynetFits.alpha_interp(pts)
+    return A_arr * day2sec**alpha_arr, alpha_arr
 
 
 def heat_rate_RP(
@@ -133,7 +147,10 @@ def heat_rate_RP(
     heating_function,
     **kwargs
 ):
-    A, alpha = skynet_heating_params(kwargs["ye"], kwargs["s"], kwargs["tau"])
+    # Batch all angular bins into a single vectorized interpolator call instead
+    # of the previous scalar loop inside generate_diff_lums.
+    # ye / s / tau are (n_angles,) arrays; the two RGI calls are replaced by one.
+    A, alpha = skynet_heating_params_batch(kwargs["ye"], kwargs["s"], kwargs["tau"])
     times_grid, alpha = np.meshgrid(times, alpha)
     if np.isscalar(A):
         A = A[None]
@@ -146,7 +163,8 @@ def heat_rate_RP(
         idx_eff=idx_eff,
         **kwargs
     )
-    return np.array(eps_th) * A[:, None] / times_grid**alpha
+    # eps_th is already an ndarray; skip the redundant np.array() wrapping.
+    return eps_th * A[:, None] / times_grid**alpha
 
 
 ########

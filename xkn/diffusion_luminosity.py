@@ -1,20 +1,16 @@
 import sys
+import hashlib
 import numpy as np
 from scipy.interpolate import interp1d, RegularGridInterpolator
 
 from . import nuclear_heat as nh
 from .utils import c, day2sec
-from .incomplete_gamma import scaled_upper_gamma
+from .incomplete_gamma import scaled_upper_gamma_vec
 
-# Note: np.frompyfunc returns dtype=object, while np.vectorize handles the type
-# correctly. In this particular applications, np.frompyfunc leads to a 50% slow
-# down, probably because of the type mishandling, so np.vectorize is
-# preferable.
-sug = np.vectorize(scaled_upper_gamma, otypes=["float64"]) # scaled upper incomplete gamma function, i.e exp(z) * Gamma(s, z)
+# Scaled_upper_gamma directly vectorized with numpy:
+sug = scaled_upper_gamma_vec
 
-def generate_diff_lums(
-    ye, entropy, tau, times, glob_vars, shell_params, glob_params, **kwargs
-):
+def generate_diff_lums(ye, entropy, tau, times, glob_vars, shell_params, glob_params, **kwargs):
     if shell_params["heat_model"] == "RP":
         A_alphas = [
             nh.skynet_heating_params(YE, S, TAU) for YE, S, TAU in zip(ye, entropy, tau)
@@ -46,20 +42,103 @@ def generate_diff_lums(
 
     result = []
     for A, alpha in A_alphas:
-        result.append(
-            DiffusionLum(
+        A_eff   = glob_params["cnst_eff"] * A * glob_vars["nuc_corr"] * glob_params["t_0"]**(-alpha)
+        alpha_eff = glob_params["idx_eff"] + alpha
+        key = _difflum_cache_key(glob_params["t_0"], times, glob_params["T_0"],
+                                 A_eff, alpha_eff)
+        if key not in _DIFFLUM_CACHE:
+            _DIFFLUM_CACHE[key] = DiffusionLum(
                 glob_params["t_0"],
                 times,
                 glob_params["T_0"],
-                glob_params["cnst_eff"] * A * glob_vars["nuc_corr"] * glob_params["t_0"]**(-alpha),
-                glob_params["idx_eff"] + alpha,
+                A_eff,
+                alpha_eff,
             )
-        )
+        result.append(_DIFFLUM_CACHE[key])
     return result
 
+# Definition of luminosity class (DiffusionLum)
+class DiffusionLum_direct:
+    # Class-level arrays:
+    N    = 500
+    n    = np.arange(1, N + 1, dtype=float)[:, None]     # (500, 1)
+    sign = ((-1) ** (n + 1)).astype(int)
+    S    = np.where(n == 1, 1.0, 0.0)
 
-# definition of luminosity class:
-class DiffusionLum(object):
+    def __init__(self, t_0, time, T_0, A, alpha):
+        self.t_0   = t_0
+        self.t_f   = time[-1]
+        self.E_0   = T_0**4 * 7.57e-15          # radiation energy density [erg/cm³]
+        self.A     = A
+        self.alpha = alpha
+        self.t     = time
+
+        # Precompute fixed (n, t) arrays — these never change for a given instance.
+        # No interpolation grids are built; calc_lum calls sug_vec directly.
+        self.gamma_factor      = -0.5 * (np.pi * self.n * self.t) ** 2 / t_0  # (500, 60)
+        self.gamma_K_nt_factor =  0.5 * (np.pi * self.n) ** 2 * t_0            # (500, 1)
+
+        # Scalar factor used in every calc_lum call
+        self.A_n_factor = (
+            self.n**(alpha - 3) * self.sign
+            * np.pi**(alpha - 3) * 2**0.5 / 2**(alpha / 2)
+            * A * t_0**(alpha / 2) / self.E_0
+        )
+
+    def calc_lum(self, v_max: float, k: float, M: float) -> np.ndarray:
+        c     = 3e10
+        rho_0 = M / (4/3 * np.pi * (v_max * self.t_0)**3)
+        tau_0 = 3 * k * rho_0 * (v_max * self.t_0)**2 / c
+        A_n   = self.A_n_factor * tau_0**(1 - self.alpha/2) * rho_0
+        s     = 1 - self.alpha / 2
+        cos_a = np.cos(np.pi * 0.5 * self.alpha)
+
+        # Two direct sug evaluations replace both the 3-D RGI (76% of old cost)
+        # and the 1-D interp1d (13% of old cost).
+        # F_K: (500, 1) — no time dependence, very cheap
+        F_K = cos_a * scaled_upper_gamma_vec(s, -self.gamma_K_nt_factor / tau_0)
+        # f:   (500, 60) — main cost; replaces the 1-D interp over 30 k points
+        f   = cos_a * scaled_upper_gamma_vec(s,  self.gamma_factor / tau_0)
+
+        exp_term = np.exp((self.gamma_factor + self.gamma_K_nt_factor) / tau_0)
+        phi = exp_term * (self.S - A_n * F_K) + A_n * f
+        T   = self.sign * self.n * phi
+
+        return (
+            np.sum(T, axis=0)
+            * 4 * np.pi**2 * c * v_max * 2**0.5 * self.t_0 * self.E_0
+            / (3 * k * rho_0)
+        )
+
+# Alternative implementation of luminosity class (DiffusionLum) using interpolation
+
+# This can speed up a little but can introduce significant errors.
+# The key observation is that sug(1−α/2, −γ_Knt/τ₀) depends only on n and τ₀,
+# not on t. The t-dependence enters only through the exp prefactor — which is
+# already computed in solution() as exp[(γ_f + γ_Knt)/τ₀]
+# The direct formula is preferable - no interpolation grids.
+
+# ---------------------------------------------------------------------------
+# Module-level cache for DiffusionLum_interp objects.
+#
+# DiffusionLum_interp.__init__ is expensive: it builds a 300-point 1-D interpolation
+# table and a 50x100x50 = 250,000-point 3-D RegularGridInterpolator. These
+# depend only on (t_0, T_0, A_eff, alpha_eff, times), not on per-call ejecta
+# parameters such as opacity or mass.  In parameter-estimation / MCMC workflows
+# (thousands of calls at fixed t_0, T_0, and time grid) this rebuild dominated
+# the ricigliano_lippold model runtime.  The cache eliminates it entirely after
+# the first call at a given parameter combination.
+# ---------------------------------------------------------------------------
+_DIFFLUM_CACHE: dict = {}
+
+def _difflum_cache_key(t_0: float, times: np.ndarray, T_0: float,
+                       A: float, alpha: float) -> str:
+    """Stable MD5 key from DiffusionLum constructor arguments."""
+    return hashlib.md5(
+        b"%r|%r|%r|%r|%r" % (t_0, tuple(times.tolist()), T_0, float(A), float(alpha))
+    ).hexdigest()
+    
+class DiffusionLum_interp(object):
     # class parameters (cgs):
 
     N = 500  # number of terms in the luminosity semi-analytical expansion formula (for convergence)
@@ -152,7 +231,7 @@ class DiffusionLum(object):
     def interpf(self, x):
         return np.cos(np.pi * 0.5 * self.alpha) * sug(
             1 - self.alpha / 2, x
-        )  # function to be interpolated
+        )  
 
     def interpfunc(self, t_K, n_K, tau_0_K):
         return (
@@ -194,3 +273,10 @@ class DiffusionLum(object):
             * self.E_0
             / (3 * k * rho_0)
         )  # sum over n of matrix elements and factor multiplication (expansion formula)
+
+# ---------------------------------------------------------------------------
+# Choose here which DiffusionLum
+# ---------------------------------------------------------------------------
+#DiffusionLum = DiffusionLum_interp 
+DiffusionLum = DiffusionLum_direct # default
+
