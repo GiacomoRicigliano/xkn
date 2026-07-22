@@ -1,0 +1,53 @@
+cff-version: 1.2.0
+message: >
+  If you use this software in your research, please cite the accompanying
+  publication.
+
+title: xkn
+type: software
+
+authors:
+  - family-names: Ricigliano
+    given-names: Giacomo
+  - family-names: Perego
+    given-names: Albino
+  - family-names: Borhanian
+    given-names: Ssohrab
+  - family-names: Loffredo
+    given-names: Eleonora
+  - family-names: Kawaguchi
+    given-names: Kyohei
+  - family-names: Bernuzzi
+    given-names: Sebastiano
+  - family-names: Lippold
+    given-names: Lukas Chris
+
+repository-code: https://github.com/GiacomoRicigliano/xkn
+
+preferred-citation:
+  type: article
+  title: "xkn: a semi-analytic framework for the modelling of kilonovae"
+  authors:
+    - family-names: Ricigliano
+      given-names: Giacomo
+    - family-names: Perego
+      given-names: Albino
+    - family-names: Borhanian
+      given-names: Ssohrab
+    - family-names: Loffredo
+      given-names: Eleonora
+    - family-names: Kawaguchi
+      given-names: Kyohei
+    - family-names: Bernuzzi
+      given-names: Sebastiano
+    - family-names: Lippold
+      given-names: Lukas Chris
+  journal: Monthly Notices of the Royal Astronomical Society
+  year: 2024
+  volume: 529
+  issue: 1
+  start: 647
+  end: 663
+  doi: 10.1093/mnras/stae572
+  url: https://doi.org/10.1093/mnras/stae572
+  
