@@ -93,6 +93,7 @@ def _difflum_cache_key(
     str
         32-character MD5 hex string uniquely identifying the combination.
     """
+    # TODO: check that the cache is deleted when the model is reloaded
     return hashlib.md5(
         b"%r|%r|%r|%r|%r" % (t_0, tuple(times.tolist()), T_0, float(A), float(alpha))
     ).hexdigest()
@@ -190,6 +191,7 @@ def generate_diff_lums(
         key = _difflum_cache_key(
             glob_params["t_0"], times, glob_params["T_0"], A_eff, alpha_eff
         )
+        """
         if key not in _DIFFLUM_CACHE:
             _DIFFLUM_CACHE[key] = DiffusionLum(
                 glob_params["t_0"],
@@ -199,6 +201,14 @@ def generate_diff_lums(
                 alpha_eff,
             )
         result.append(_DIFFLUM_CACHE[key])
+        """
+        result.append(DiffusionLum(
+            glob_params["t_0"],
+            times,
+            glob_params["T_0"],
+            A_eff,
+            alpha_eff,
+            ))
     return result
 
 
