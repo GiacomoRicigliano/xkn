@@ -34,6 +34,7 @@ def read_filters(
     EBV=0.105,
     A_V=None,
     upper_limits=True,
+    lam_list=None,
 ):
     if filter_usage == "measures":
         return read_filter_measures(
@@ -49,14 +50,15 @@ def read_filters(
             EBV=EBV,
             A_V=A_V,
             upper_limits=upper_limits,
+            lam_list=lam_list,
         )
     elif filter_usage == "properties":
-        return read_filter_properties(filter_dict, filter_dict_path)
+        return read_filter_properties(filter_dict, filter_dict_path, lam_list)
     else:
         sys.exit("Wrong usage for filters. Choose from 'measures' or 'properties'.")
 
 
-def read_filter_properties(filter_dict="telescopes", filter_dict_path=None):
+def read_filter_properties(filter_dict="telescopes", filter_dict_path=None, lam_list=None):
     # load the filter informations
     if filter_dict_path is None:
         filter_dict_path = os.path.join(
@@ -67,6 +69,8 @@ def read_filter_properties(filter_dict="telescopes", filter_dict_path=None):
     with open(filter_dict_path, "r") as fi:
         dic_filt = json.load(fi)
     lams = np.sort(np.asarray(list(dic_filt.keys()), dtype=int))
+    if lam_list is not None:
+        lams = np.intersect1d(lams, lam_list)
     return {lam: dic_filt[str(lam)] for lam in lams}, lams, {}
 
 
@@ -83,6 +87,7 @@ def read_filter_measures(
     EBV=0.105,
     A_V=None,
     upper_limits=True,
+    lam_list=None,
 ):
     # check if filter_data_path exists
     if not os.path.exists(filter_data_path):
@@ -92,7 +97,7 @@ def read_filter_measures(
 
     # load the filter information
     dic_filt, lams, _ = read_filter_properties(
-        filter_dict=filter_dict, filter_dict_path=filter_dict_path
+        filter_dict=filter_dict, filter_dict_path=filter_dict_path, lam_list=lam_list
     )
 
     # load the measured magnitudes
@@ -150,7 +155,11 @@ def read_filter_measures(
         else:
             del dic_filt[lam]
 
-    assert list(dic_filt.keys()) == list(measures.keys())
+    if lam_list == None:
+        assert list(dic_filt.keys()) == list(measures.keys())
+    else:
+
+        assert list(dic_filt.keys()) == list(measures.keys())
 
     return dic_filt, np.sort(np.asarray(list(dic_filt.keys()), dtype=int)), measures
 
