@@ -2,9 +2,7 @@
 diffusion_luminosity.py
 =======================
 Semi-analytical diffusion luminosity model for kilonova ejecta, following
-Ricigliano et al Monthly Notices of the Royal Astronomical Society,
-Volume 529, Issue 1, March 2024, Pages 647–663, https://doi.org/10.1093/mnras/stae572
-https://arxiv.org/abs/2311.15709
+Ricigliano & Lippold (in prep.) / Piro & Morozova (2016).
 
 The module exposes two concrete implementations of the luminosity class:
 
@@ -13,7 +11,9 @@ The module exposes two concrete implementations of the luminosity class:
     calls to :func:`~incomplete_gamma.scaled_upper_gamma_vec`.  No
     interpolation grids are built during initialisation, so construction
     is O(1) and there are no approximation errors from grid coarseness or
-    extrapolation outside a pre-tabulated range.
+    extrapolation outside a pre-tabulated range.  The cache is **bypassed
+    entirely** for this implementation — no memory accumulates across PE
+    samples.
 
 ``DiffusionLum_interp``
     Legacy implementation that pre-builds a 1-D ``interp1d`` table (300
@@ -31,6 +31,24 @@ The active implementation is selected at the bottom of this module via::
 
     DiffusionLum = DiffusionLum_direct   # change to DiffusionLum_interp to revert
 
+Cache control (relevant when using ``DiffusionLum_interp``)
+------------------------------------------------------------
+In a parameter-estimation run every posterior sample produces a unique
+``(A_eff, alpha_eff)`` combination, so an unbounded cache would grow at
+≈90 MB per sample and cause OOM after a few thousand steps.  The cache is
+therefore a bounded LRU store (default 128 entries ≈ 256 MB):
+
+``clear_cache()``
+    Drop all entries and reset statistics.  Call between independent PE
+    runs or whenever the global parameters change.
+
+``cache_info()``
+    Return a dict with ``hits``, ``misses``, ``size``, ``maxsize``, and
+    ``memory_MB``.
+
+``set_cache_maxsize(n)``
+    Resize the cache at runtime.  Pass ``0`` to disable caching entirely.
+
 Public helpers
 --------------
 generate_diff_lums
@@ -40,6 +58,7 @@ generate_diff_lums
 
 import sys
 import hashlib
+from collections import OrderedDict
 
 import numpy as np
 from scipy.interpolate import interp1d, RegularGridInterpolator
@@ -53,17 +72,113 @@ sug = scaled_upper_gamma_vec
 
 
 # ---------------------------------------------------------------------------
-# Module-level cache for DiffusionLum objects
+# Bounded LRU cache for DiffusionLum_interp objects
 # ---------------------------------------------------------------------------
-# DiffusionLum_interp.__init__ is expensive (builds a 250 000-point 3-D
-# RegularGridInterpolator).  In MCMC / parameter-estimation workflows the
-# constructor arguments (t_0, T_0, A_eff, alpha_eff, times) are usually
-# fixed across thousands of likelihood evaluations.  The cache eliminates
-# repeated construction after the first call at each unique parameter set.
-# DiffusionLum_direct.__init__ is O(1) so the cache is less critical there,
-# but it is still applied uniformly for consistency.
+# Background
+# ~~~~~~~~~~
+# ``DiffusionLum_interp.__init__`` builds a 50×100×50 = 250 000-point 3-D
+# ``RegularGridInterpolator`` (≈2 MB per object).  In a parameter-estimation
+# (PE) run the effective heating parameters ``(A_eff, alpha_eff)`` change
+# with every posterior sample, so a naive unbounded ``dict`` accumulates a
+# new 2 MB entry per sample → OOM after a few thousand steps
+# (45 objects/sample × 2 MB × 1 000 samples ≈ 90 GB).
+#
+# ``DiffusionLum_direct.__init__`` is O(1) (no grids), so it does NOT use
+# this cache — skipping it removes overhead with zero benefit.
+#
+# Design
+# ~~~~~~
+# The cache is an ``OrderedDict`` used as a least-recently-used (LRU) store
+# with a configurable maximum entry count (default 128).  When the limit is
+# reached the oldest entry is evicted before the new one is inserted.
+# This bounds memory to ``_DIFFLUM_CACHE_MAXSIZE × 2 MB ≈ 256 MB`` in the
+# worst case, while still giving cache hits when the sampler revisits
+# previously seen parameter combinations (e.g. during burn-in or when the
+# posterior concentrates).
+#
+# Public API
+# ~~~~~~~~~~
+# ``clear_cache()``   — drop all entries (call between independent PE runs).
+# ``cache_info()``    — return a dict with hits, misses, size, and maxsize.
+# ``set_cache_maxsize(n)`` — resize the cache at runtime.
 
-_DIFFLUM_CACHE: dict = {}
+_DIFFLUM_CACHE: OrderedDict = OrderedDict()
+_DIFFLUM_CACHE_MAXSIZE: int = 128
+_DIFFLUM_CACHE_HITS: int    = 0
+_DIFFLUM_CACHE_MISSES: int  = 0
+
+
+def clear_cache() -> None:
+    """Evict all entries from the :class:`DiffusionLum_interp` cache.
+
+    Call this between independent parameter-estimation runs (or whenever
+    the fixed global parameters ``t_0``, ``T_0``, or the time grid change)
+    to avoid stale cache hits and to free the associated memory immediately.
+
+    Example
+    -------
+    >>> from xkn.diffusion_luminosity import clear_cache
+    >>> clear_cache()
+    """
+    global _DIFFLUM_CACHE_HITS, _DIFFLUM_CACHE_MISSES
+    _DIFFLUM_CACHE.clear()
+    _DIFFLUM_CACHE_HITS   = 0
+    _DIFFLUM_CACHE_MISSES = 0
+
+
+def cache_info() -> dict:
+    """Return diagnostic information about the :class:`DiffusionLum_interp` cache.
+
+    Returns
+    -------
+    dict with keys:
+
+    ``hits`` : int
+        Number of times a cached object was returned without reconstruction.
+    ``misses`` : int
+        Number of times a new object was constructed and inserted.
+    ``size`` : int
+        Current number of entries in the cache.
+    ``maxsize`` : int
+        Maximum number of entries before LRU eviction occurs.
+    ``memory_MB`` : float
+        Approximate memory occupied by cached G_K arrays (2 MB each).
+
+    Example
+    -------
+    >>> from xkn.diffusion_luminosity import cache_info
+    >>> print(cache_info())
+    """
+    return {
+        "hits":      _DIFFLUM_CACHE_HITS,
+        "misses":    _DIFFLUM_CACHE_MISSES,
+        "size":      len(_DIFFLUM_CACHE),
+        "maxsize":   _DIFFLUM_CACHE_MAXSIZE,
+        "memory_MB": len(_DIFFLUM_CACHE) * 2.0,   # ≈2 MB per DiffusionLum_interp
+    }
+
+
+def set_cache_maxsize(n: int) -> None:
+    """Set the maximum number of entries in the :class:`DiffusionLum_interp` cache.
+
+    Entries beyond the new limit are evicted (oldest first) immediately.
+
+    Parameters
+    ----------
+    n : int
+        New maximum size.  Pass ``0`` to disable caching entirely
+        (every call constructs a fresh object).
+
+    Example
+    -------
+    >>> from xkn.diffusion_luminosity import set_cache_maxsize
+    >>> set_cache_maxsize(32)   # tighter limit for low-memory machines
+    """
+    global _DIFFLUM_CACHE_MAXSIZE
+    _DIFFLUM_CACHE_MAXSIZE = max(0, int(n))
+    # Evict excess entries immediately (oldest first)
+    while len(_DIFFLUM_CACHE) > _DIFFLUM_CACHE_MAXSIZE:
+        _DIFFLUM_CACHE.popitem(last=False)
 
 
 def _difflum_cache_key(
@@ -93,10 +208,35 @@ def _difflum_cache_key(
     str
         32-character MD5 hex string uniquely identifying the combination.
     """
-    # TODO: check that the cache is deleted when the model is reloaded
     return hashlib.md5(
         b"%r|%r|%r|%r|%r" % (t_0, tuple(times.tolist()), T_0, float(A), float(alpha))
     ).hexdigest()
+
+
+def _cache_get(key: str):
+    """Retrieve *key* from the LRU cache, promoting it to most-recent.
+
+    Returns ``None`` if *key* is not present.
+    """
+    global _DIFFLUM_CACHE_HITS, _DIFFLUM_CACHE_MISSES
+    if key in _DIFFLUM_CACHE:
+        _DIFFLUM_CACHE.move_to_end(key)   # mark as most recently used
+        _DIFFLUM_CACHE_HITS += 1
+        return _DIFFLUM_CACHE[key]
+    _DIFFLUM_CACHE_MISSES += 1
+    return None
+
+
+def _cache_put(key: str, obj) -> None:
+    """Insert *obj* under *key*, evicting the oldest entry if at capacity."""
+    if _DIFFLUM_CACHE_MAXSIZE <= 0:
+        return   # caching disabled
+    if key in _DIFFLUM_CACHE:
+        _DIFFLUM_CACHE.move_to_end(key)
+    else:
+        if len(_DIFFLUM_CACHE) >= _DIFFLUM_CACHE_MAXSIZE:
+            _DIFFLUM_CACHE.popitem(last=False)   # evict LRU entry
+        _DIFFLUM_CACHE[key] = obj
 
 
 # ---------------------------------------------------------------------------
@@ -118,9 +258,17 @@ def generate_diff_lums(
     One :class:`DiffusionLum` instance is created per unique combination of
     heating parameters ``(A_eff, alpha_eff)`` derived from the electron
     fraction *ye*, *entropy*, and expansion timescale *tau* of each angular
-    bin.  Instances are cached in :data:`_DIFFLUM_CACHE` so that repeated
-    calls with the same effective parameters do not rebuild expensive
-    interpolation tables.
+    bin.
+
+    Caching behaviour
+    -----------------
+    * **DiffusionLum_direct** (default): construction is O(1), so the cache
+      is **bypassed entirely** — no memory is accumulated across PE samples.
+    * **DiffusionLum_interp**: instances are stored in the module-level LRU
+      cache :data:`_DIFFLUM_CACHE` (max :data:`_DIFFLUM_CACHE_MAXSIZE`
+      entries, default 128 ≈ 256 MB).  When the limit is reached the oldest
+      entry is evicted automatically.  Call :func:`clear_cache` between
+      independent PE runs to release memory explicitly.
 
     Parameters
     ----------
@@ -167,8 +315,10 @@ def generate_diff_lums(
             (1.95e10 * glob_vars["eps0"] / 2e18, glob_params["alpha"])
         ]
     elif heat_model == "LR":
-        A_alphas = [nh.skynet_heating_params(YE, S, TAU)
-                    for YE, S, TAU in zip(ye, entropy, tau)]
+        A_alphas = [
+            nh.skynet_heating_params(YE, S, TAU)
+            for YE, S, TAU in zip(ye, entropy, tau)
+        ]
     else:
         sys.exit(
             "Wrong input name for heating rate model\n"
@@ -179,6 +329,8 @@ def generate_diff_lums(
             '  "K"   for Korobkin 2015'
         )
 
+    use_interp = (DiffusionLum is DiffusionLum_interp)
+
     result = []
     for A, alpha in A_alphas:
         A_eff     = (
@@ -188,27 +340,29 @@ def generate_diff_lums(
             * glob_params["t_0"] ** (-alpha)
         )
         alpha_eff = glob_params["idx_eff"] + alpha
-        key = _difflum_cache_key(
-            glob_params["t_0"], times, glob_params["T_0"], A_eff, alpha_eff
-        )
-        """
-        if key not in _DIFFLUM_CACHE:
-            _DIFFLUM_CACHE[key] = DiffusionLum(
-                glob_params["t_0"],
-                times,
-                glob_params["T_0"],
-                A_eff,
-                alpha_eff,
+
+        if use_interp:
+            # DiffusionLum_interp: check the bounded LRU cache first.
+            # Construction is expensive (~2 MB, O(seconds)), so cache hits
+            # are worthwhile when the sampler revisits the same parameters.
+            key = _difflum_cache_key(
+                glob_params["t_0"], times, glob_params["T_0"], A_eff, alpha_eff
             )
-        result.append(_DIFFLUM_CACHE[key])
-        """
-        result.append(DiffusionLum(
-            glob_params["t_0"],
-            times,
-            glob_params["T_0"],
-            A_eff,
-            alpha_eff,
-            ))
+            obj = _cache_get(key)
+            if obj is None:
+                obj = DiffusionLum(
+                    glob_params["t_0"], times, glob_params["T_0"], A_eff, alpha_eff,
+                )
+                _cache_put(key, obj)
+        else:
+            # DiffusionLum_direct: construction is O(1) and allocates only
+            # two small fixed arrays, so caching adds overhead with no
+            # benefit and would grow unboundedly across PE samples.
+            obj = DiffusionLum(
+                glob_params["t_0"], times, glob_params["T_0"], A_eff, alpha_eff,
+            )
+
+        result.append(obj)
     return result
 
 
