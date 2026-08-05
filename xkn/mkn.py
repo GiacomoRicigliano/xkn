@@ -181,6 +181,7 @@ class MKN:
                 EBV=self.glob_params["EBV"],
                 A_V=self.glob_params["A_V"],
                 upper_limits=self.glob_params["upper_limits"],
+                lam_list=self.glob_params["lam_list"],
             )
 
             self.dic_filt, self.lams, self.mag = flt.limit_mags(
